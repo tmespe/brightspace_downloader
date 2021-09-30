@@ -1,0 +1,6 @@
+/client_secrets.json
+/.env
+/downloads.log
+/geckodriver.log
+/settings.yaml
+/creds.json
