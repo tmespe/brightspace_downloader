@@ -10,6 +10,7 @@ from typing import Union
 
 from dotenv import load_dotenv
 from selenium import webdriver
+from selenium.common.exceptions import NoAlertPresentException
 from selenium.webdriver.firefox.options import Options
 
 # Set up logging and
@@ -54,6 +55,20 @@ def open_course_list(filename: str = "courses.json") -> Union[dict]:
     return courses
 
 
+def check_if_alert() -> Union[True, False]:
+    """
+    Checks if javascript log in alert is present and waits for user to enter user and password manually
+    and presses enter key to continue
+    :return: True if alert is present None otherwise
+    """
+    try:
+        alert = driver.switch_to.alert
+        input("Press enter after entering username and password")
+        return True
+    except NoAlertPresentException:
+        return
+
+
 def log_in(user: str = user, password: str = password) -> None:
     """
     Logs in to brightspace with given username and password
@@ -66,14 +81,15 @@ def log_in(user: str = user, password: str = password) -> None:
     sign_in_button = '//*[@id="submitButton"]'
 
     driver.get(LOGIN_URL)
-
-    # Find username, pasword and sign in elements and send keys for log in
-    user_element = driver.find_element_by_xpath(user_xpath)
-    password_element = driver.find_element_by_xpath(password_xpath)
-    sign_in = driver.find_element_by_xpath(sign_in_button)
-    user_element.send_keys(user)
-    password_element.send_keys(password)
-    sign_in.click()
+    # Handle cases where on local network and an alert login pop up displays
+    if not check_if_alert():
+        # Find username, pasword and sign in elements and send keys for log in
+        user_element = driver.find_element_by_xpath(user_xpath)
+        password_element = driver.find_element_by_xpath(password_xpath)
+        sign_in = driver.find_element_by_xpath(sign_in_button)
+        user_element.send_keys(user)
+        password_element.send_keys(password)
+        sign_in.click()
 
 
 def get_docs_from_course(url: str, course_name: str) -> None:
