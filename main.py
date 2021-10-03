@@ -175,6 +175,11 @@ def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensi
         logging.debug(f"Successfully extracted {file} to {new_path}")
         zip_ref.close()
 
+        # Remove unwanted zip and html files
+        new_path.unlink()
+        for html_file in target_path.glob("*.html*"):
+            html_file.unlink()
+
 
 if __name__ == '__main__':
     log_in()
