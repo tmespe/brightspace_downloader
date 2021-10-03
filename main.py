@@ -95,6 +95,9 @@ def log_in(user: str = user, password: str = password) -> None:
     :param password: Brightspace password
     """
     # Select html xpath for username, password and sign in button
+    if not user or not password:
+        print("No username or password provided. Did you create a .env file with USER_NAME and PASSWORD?")
+        return
     user_xpath = '//*[@id="userNameInput"]'
     password_xpath = '//*[@id="passwordInput"]'
     sign_in_button = '//*[@id="submitButton"]'
