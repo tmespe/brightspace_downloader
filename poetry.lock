@@ -1,6 +1,6 @@
 [[package]]
 name = "cachetools"
-version = "4.2.2"
+version = "4.2.4"
 description = "Extensible memoizing collections and decorators"
 category = "main"
 optional = false
@@ -135,6 +135,17 @@ description = "Internationalized Domain Names in Applications (IDNA)"
 category = "main"
 optional = false
 python-versions = ">=3.5"
+
+[[package]]
+name = "msedge-selenium-tools"
+version = "3.141.3"
+description = "An updated EdgeDriver implementation for Selenium 3 with newly-added support for Microsoft Edge (Chromium)."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+selenium = "3.141"
 
 [[package]]
 name = "oauth2client"
@@ -309,13 +320,13 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [metadata]
 lock-version = "1.1"
-python-versions = "^3.9"
-content-hash = "4f610cf0510f8ad27ac079f3651bf7d8c63b4585ca8695e8ee63ac79df54b6a3"
+python-versions = "^3.8"
+content-hash = "2346a76d6db90d2929ef7ba00074ce1fb7e17863240c7458bebc17977504067d"
 
 [metadata.files]
 cachetools = [
-    {file = "cachetools-4.2.2-py3-none-any.whl", hash = "sha256:2cc0b89715337ab6dbba85b5b50effe2b0c74e035d83ee8ed637cf52f12ae001"},
-    {file = "cachetools-4.2.2.tar.gz", hash = "sha256:61b5ed1e22a0924aed1d23b478f37e8d52549ff8a961de2909c69bf950020cff"},
+    {file = "cachetools-4.2.4-py3-none-any.whl", hash = "sha256:92971d3cb7d2a97efff7c7bb1657f21a8f5fb309a37530537c71b1774189f2d1"},
+    {file = "cachetools-4.2.4.tar.gz", hash = "sha256:89ea6f1b638d5a73a4f9226be57ac5e4f399d22770b92355f92dcb0f7f001693"},
 ]
 certifi = [
     {file = "certifi-2021.5.30-py2.py3-none-any.whl", hash = "sha256:50b1e4f8446b06f41be7dd6338db18e0990601dce795c2b1686458aa7e8fa7d8"},
@@ -357,6 +368,10 @@ httplib2 = [
 idna = [
     {file = "idna-3.2-py3-none-any.whl", hash = "sha256:14475042e284991034cb48e06f6851428fb14c4dc953acd9be9a5e95c7b6dd7a"},
     {file = "idna-3.2.tar.gz", hash = "sha256:467fbad99067910785144ce333826c71fb0e63a425657295239737f7ecd125f3"},
+]
+msedge-selenium-tools = [
+    {file = "msedge-selenium-tools-3.141.3.tar.gz", hash = "sha256:b6d4adce03770211de9a927edce41672baa6b2f582a969d564e5176631cc8d2b"},
+    {file = "msedge_selenium_tools-3.141.3-py3-none-any.whl", hash = "sha256:63e2966d48094239e4d40bdaf9fd1c723698541c90362cf8d810d934cd7334f9"},
 ]
 oauth2client = [
     {file = "oauth2client-4.1.3-py2.py3-none-any.whl", hash = "sha256:b8a81cc5d60e2d364f0b1b98f958dbd472887acaf1a5b05e21c28c31a2d6d3ac"},

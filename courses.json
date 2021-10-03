@@ -2,107 +2,86 @@
   "courses": [
     {
       "name": "Artificial intelligence in marketing",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210338/units/742721",
       "code": "210338"
     },
     {
       "name": "Tutorship AI in Marketing",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210425",
        "code": "210425"
     },
     {
       "name": "Web content strategy",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210431/units/753930",
-      "code": "753930"
+      "code": "210431"
     },
     {
       "name": "Strategizing : digital business models",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210410",
       "code": "210410"
     },
     {
       "name": "Web analytics",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210377",
       "code": "210377"
     },
     {
-      "url": "Ethics in data driven world",
-      "name": "https://emlyon.brightspace.com/d2l/le/lessons/210380",
+      "name": "Ethics in data driven world",
       "code": "210380"
     },
     {
       "name": "Principles of user experience design",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210405",
       "code": "210405"
     },
     {
       "name": "Pogrammatic advert",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210428",
       "code": "210428"
     },
     {
       "name": "FLE",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210384",
       "code": "210384"
     },
     {
       "name": "Crm data platforms & marketing auto",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210355",
       "code": "210355"
     },
     {
       "name": "Responsible artificial intelligence",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210450",
       "code": "210450"
     },
     {
       "name": "Social media & mobile marketing in asia",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210459",
       "code": "210459"
     },
     {
       "name": " Artificial intelligence & disruptive tech",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210437",
       "code": "210437"
     },
     {
       "name": "Asian business environement",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210434",
       "code": "210434"
     },
     {
       "name": "Machine learning & business cases",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210398",
       "code": "210398"
     },
     {
       "name": "Data vizualisation",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210373",
       "code": "210373"
     },
     {
       "name": "Data for business",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210357",
       "code": "210357"
     },
     {
       "name": "Data science & text mining",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210365",
       "code": "210365"
     },
     {
       "name": "Python coding bootcamp",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210401",
       "code": "210401"
     },
     {
       "name": "Advanced excel",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210342",
       "code": "210342"
     },
     {
       "name": "SQL",
-      "url": "https://emlyon.brightspace.com/d2l/le/lessons/210414",
       "code": "210414"
     }
   ]
