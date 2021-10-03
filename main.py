@@ -5,51 +5,32 @@ import logging
 import os
 import pathlib
 import zipfile
-import argparse
-import sys
-
 from time import sleep
-from typing import Union, Optional
+from typing import Union
 
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.common.exceptions import NoAlertPresentException
 from selenium.webdriver.firefox.options import Options
 
-# Set up logging
+# Set up logging and
 logging.basicConfig(level=logging.DEBUG, filename='downloads.log', filemode='w',
                     format='%(asctime)s %(name)s - %(levelname)s - %(message)s')
-logging.getLogger().addHandler(logging.StreamHandler())
 
 # Load environment, urls and save folders
 load_dotenv()
+save_folder = "/home/tmespe/Documents/Em-lyon/brightspace"
 LOGIN_URL = "https://emlyon.brightspace.com/"
-BASE_URL = "https://emlyon.brightspace.com/d2l/le/content/"
-save_folder = pathlib.Path.home() / "Documents/Em-lyon/brightspace"  # Save to user Documents folder
 user = os.getenv("USER_NAME")
 password = os.getenv("PASSWORD")
-
-# Argparse
-my_parser = argparse.ArgumentParser(description='Download course contents from brightspace')
-
-my_parser.add_argument("-d",
-                       "--directory",
-                       metavar="arg_directory",
-                       type=str,
-                       help="name of text arg_file to search")
-
-args = my_parser.parse_args()
-save_folder = args.directory or save_folder
-logging.info(f"Saving files to {save_folder}")
 
 # Set download preferences for Firefox to make it download automatically with no dialogue
 op = Options()
 op.set_preference("browser.download.folderList", 2)
 op.set_preference("browser.download.manager.showWhenStarting", False)
-op.set_preference("browser.download.dir", str(save_folder))
+op.set_preference("browser.download.dir", save_folder)
 op.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/x-zip-compressed")
 op.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/zip")
-op.headless = True
 
 driver = webdriver.Firefox(options=op)
 
@@ -74,7 +55,7 @@ def open_course_list(filename: str = "courses.json") -> Union[dict]:
     return courses
 
 
-def check_if_alert() -> Optional[bool]:
+def check_if_alert() -> Union[True, False]:
     """
     Checks if javascript log in alert is present and waits for user to enter user and password manually
     and presses enter key to continue
@@ -140,17 +121,14 @@ def get_docs_from_course(url: str, course_name: str) -> None:
 
         # Loop over all units on the content iframe and select download button and save
         for unit in all_units:
-            unit_name = unit.text.split("\n")[0]
-
             pathlib.Path(unit.text).mkdir(parents=True, exist_ok=True)
             unit.click()
             driver.implicitly_wait(2)
             download_url = driver.find_element_by_class_name("download-content-button")
             download_url.click()
-            logging.debug(f"Downloading {unit_name}")
-            # logging.debug("%s downloaded", unit_name)
-            sleep(60)
-            logging.debug(f"Downloaded {unit_name}")
+            unit_name = unit.text.split("\n")[0]
+            logging.debug("%s downloaded", unit_name)
+            sleep(30)
             move_and_extract_files(pathlib.Path(unit_name))
     else:
         pass
@@ -158,7 +136,7 @@ def get_docs_from_course(url: str, course_name: str) -> None:
 
 def move_and_extract_files(destination_folder, sourcefolder=save_folder, extension="*.zip*") -> None:
     """
-    Moves and extracts files with a given extension from source folder to destination folder
+    Moves and extracts files with a given extension from source to destination
     :param destination_folder: Folder to move files to
     :param sourcefolder: Folder to move files from
     :param extension: Extension of files to move
@@ -166,11 +144,8 @@ def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensi
     for file in pathlib.Path(sourcefolder).glob(extension):
         target_path = destination_folder
         new_path = file.rename(target_path.joinpath(file.name))
-        logging.debug(f"Extracting {file} form {target_path} to {new_path}")
-        print(f"Extracting {file} form {target_path} to {new_path}")
         zip_ref = zipfile.ZipFile(new_path)
         zip_ref.extractall(target_path)
-        logging.debug(f"Successfully extracted {file} to {new_path}")
         zip_ref.close()
 
 
@@ -178,13 +153,10 @@ if __name__ == '__main__':
     log_in()
     courses = open_course_list()
 
-    for course in courses:
-        course_code = course["code"]
+    for course in courses[1:]:
         course_name = course["name"]
-        course_url = f"{BASE_URL}/{course_code}/home"
+        course_url = course["url"]
         try:
-            logging.debug(f"Attempting to get content from {course_name}")
             get_docs_from_course(course_url, course_name)
-            logging.debug(f"Finished getting content from {course_name}")
-        except Exception as e:
-            logging.debug(e)
+        except Exception:
+            pass
