@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.DEBUG, filename='downloads.log', filemode='w',
                     format='%(asctime)s %(name)s - %(levelname)s - %(message)s')
 logging.getLogger().addHandler(logging.StreamHandler())
 
-# Load environment, urls and save folders
+# Load environment, set urls and save folders
 load_dotenv()
 LOGIN_URL = "https://emlyon.brightspace.com/"
 BASE_URL = "https://emlyon.brightspace.com/d2l/le/content/"
@@ -29,7 +29,7 @@ save_folder = pathlib.Path.home() / "Documents/Em-lyon/brightspace"  # Save to u
 user = os.getenv("USER_NAME")
 password = os.getenv("PASSWORD")
 
-# Argparse
+# Add argument for setting directory to download content to
 my_parser = argparse.ArgumentParser(description='Download course contents from brightspace')
 
 my_parser.add_argument("-d",
@@ -39,7 +39,7 @@ my_parser.add_argument("-d",
                        help="name of text arg_file to search")
 
 args = my_parser.parse_args()
-save_folder = args.directory or save_folder
+save_folder = args.directory or save_folder  # Use save folder from argument if set, else save to default
 logging.info(f"Saving files to {save_folder}")
 
 # Set download preferences for Firefox to make it download automatically with no dialogue
@@ -61,7 +61,6 @@ def open_course_list(filename: str = "courses.json") -> Union[dict]:
             "courses": [
                 {
                   "name": "Artificial intelligence in marketing",
-                  "url": "https://emlyon.brightspace.com/d2l/le/lessons/210338/units/742721",
                   "code": "210338"
                 }
             ]
@@ -94,15 +93,17 @@ def log_in(user: str = user, password: str = password) -> None:
     :param user: Brightspace username
     :param password: Brightspace password
     """
-    # Select html xpath for username, password and sign in button
+    # Check if username or password missing and exit if either missing
     if not user or not password:
         sys.exit("No username or password provided. Did you create a .env file with USER_NAME and PASSWORD?")
+
+    # Select html xpath for username, password and sign in button
     user_xpath = '//*[@id="userNameInput"]'
     password_xpath = '//*[@id="passwordInput"]'
     sign_in_button = '//*[@id="submitButton"]'
 
     driver.get(LOGIN_URL)
-    # Handle cases where on local network and an alert login pop up displays
+    # Handle cases where on local emlyon network and an alert login pop up displays
     if not check_if_alert():
         # Find username, pasword and sign in elements and send keys for log in
         user_element = driver.find_element_by_xpath(user_xpath)
@@ -140,13 +141,13 @@ def get_docs_from_course(url: str, course_name: str) -> None:
         pathlib.Path(course_name).mkdir(parents=True, exist_ok=True)
         os.chdir(course_name)
 
-        # Loop over all units on the content iframe and select download button and save
+        # Loop over all units on the content iframe and click download button and save
         for unit in all_units:
             unit_name = unit.text.split("\n")[0]
 
             pathlib.Path(unit.text).mkdir(parents=True, exist_ok=True)
             unit.click()
-            driver.implicitly_wait(2)
+            driver.implicitly_wait(2)  # Wait to make sure unit is loaded before clicking download
             download_url = driver.find_element_by_class_name("download-content-button")
             download_url.click()
             logging.debug(f"Downloading {unit_name}")
@@ -182,8 +183,8 @@ def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensi
 
 
 if __name__ == '__main__':
-    log_in()
     courses = open_course_list()
+    log_in()
 
     for course in courses:
         course_code = course["code"]
