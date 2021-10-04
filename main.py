@@ -196,3 +196,4 @@ if __name__ == '__main__':
             logging.debug(f"Finished getting content from {course_name}")
         except Exception as e:
             logging.debug(e)
+    driver.quit()  # Explicitly close driver when finished
