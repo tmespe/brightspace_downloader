@@ -13,7 +13,7 @@ from typing import Union, Optional
 
 from dotenv import load_dotenv
 from selenium import webdriver
-from selenium.common.exceptions import NoAlertPresentException
+from selenium.common.exceptions import NoAlertPresentException, NoSuchElementException
 from selenium.webdriver.firefox.options import Options
 
 # Set up logging
@@ -148,8 +148,12 @@ def get_docs_from_course(url: str, course_name: str) -> None:
             pathlib.Path(unit.text).mkdir(parents=True, exist_ok=True)
             unit.click()
             driver.implicitly_wait(2)  # Wait to make sure unit is loaded before clicking download
-            download_url = driver.find_element_by_class_name("download-content-button")
-            download_url.click()
+            try:
+                download_url = driver.find_element_by_class_name("download-content-button")
+                download_url.click()
+            except NoSuchElementException as e:
+                logging.error(e)
+                continue
             logging.debug(f"Downloading {unit_name}")
             # logging.debug("%s downloaded", unit_name)
             sleep(60)
