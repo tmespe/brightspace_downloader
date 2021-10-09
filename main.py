@@ -1,13 +1,12 @@
 # Downloads course content from brightspace and saves to disk
 
+import argparse
 import json
 import logging
 import os
 import pathlib
-import zipfile
-import argparse
 import sys
-
+import zipfile
 from time import sleep
 from typing import Union, Optional
 
@@ -148,49 +147,62 @@ def get_docs_from_course(url: str, course_name: str) -> None:
             pathlib.Path(unit.text).mkdir(parents=True, exist_ok=True)
             unit.click()
             driver.implicitly_wait(2)  # Wait to make sure unit is loaded before clicking download
+            logging.debug(f"Downloading {unit_name}")
             try:
                 download_url = driver.find_element_by_class_name("download-content-button")
                 download_url.click()
+                sleep(60)
             except NoSuchElementException as e:
-                logging.error(e)
-                continue
-            logging.debug(f"Downloading {unit_name}")
-            # logging.debug("%s downloaded", unit_name)
-            sleep(60)
-            logging.debug(f"Downloaded {unit_name}")
-            move_and_extract_files(pathlib.Path(unit_name))
+                if driver.find_element_by_tag_name("body").text:
+                    save_html_page(save_folder.joinpath(unit_name + ".html"), driver.page_source)
+                else:
+                    logging.error(e)
+                    continue
+            finally:
+                # logging.debug("%s downloaded", unit_name)
+                logging.debug(f"Downloaded {unit_name}")
+                move_and_extract_files(pathlib.Path(unit_name))
     else:
         pass
 
 
-def move_and_extract_files(destination_folder, sourcefolder=save_folder, extension="*.zip*") -> None:
+def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensions=[".zip", ".html"]) -> None:
     """
     Moves and extracts files with a given extension from source folder to destination folder
     :param destination_folder: Folder to move files to
     :param sourcefolder: Folder to move files from
     :param extension: Extension of files to move
     """
-    for file in pathlib.Path(sourcefolder).glob(extension):
+    files = {p.resolve() for p in pathlib.Path(sourcefolder).glob("*") if p.suffix in extensions}
+
+    for file in files:
         target_path = destination_folder
         new_path = file.rename(target_path.joinpath(file.name))
-        logging.debug(f"Extracting {file} form {target_path} to {new_path}")
-        print(f"Extracting {file} form {target_path} to {new_path}")
-        zip_ref = zipfile.ZipFile(new_path)
-        zip_ref.extractall(target_path)
-        logging.debug(f"Successfully extracted {file} to {new_path}")
-        zip_ref.close()
+        if new_path.suffix == ".zip":
+            logging.debug(f"Extracting {file} form {target_path} to {new_path}")
+            print(f"Extracting {file} form {target_path} to {new_path}")
+            zip_ref = zipfile.ZipFile(new_path)
+            zip_ref.extractall(target_path)
+            logging.debug(f"Successfully extracted {file} to {new_path}")
+            zip_ref.close()
 
-        # Remove unwanted zip and html files
-        new_path.unlink()
-        for html_file in target_path.glob("*.html*"):
-            html_file.unlink()
+            # Remove unwanted zip and html files
+            new_path.unlink()
+            for html_file in target_path.glob("*.html*"):
+                if "Table of Contents" in html_file.name:
+                    html_file.unlink()
+
+
+def save_html_page(file_name: str, html: str) -> None:
+    with open(file_name, "w") as f:
+        f.write(html)
 
 
 if __name__ == '__main__':
     courses = open_course_list()
     log_in()
 
-    for course in courses:
+    for course in courses[1:3]:
         course_code = course["code"]
         course_name = course["name"]
         course_url = f"{BASE_URL}/{course_code}/home"
