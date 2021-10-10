@@ -8,6 +8,8 @@ authors = ["Terje Espedal <terje.m.espedal@gmail.com>"]
 python = "^3.8"
 selenium = "^3.141.0"
 python-dotenv = "^0.19.0"
+requests = "^2.26.0"
+beautifulsoup4 = "^4.10.0"
 
 [tool.poetry.dev-dependencies]
 

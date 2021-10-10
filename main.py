@@ -7,10 +7,12 @@ import pathlib
 import zipfile
 import argparse
 import sys
+import requests
 
 from time import sleep
 from typing import Union, Optional
 
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.common.exceptions import NoAlertPresentException, NoSuchElementException
@@ -28,6 +30,10 @@ BASE_URL = "https://emlyon.brightspace.com/d2l/le/content/"
 save_folder = pathlib.Path.home() / "Documents/Em-lyon/brightspace"  # Save to user Documents folder
 user = os.getenv("USER_NAME")
 password = os.getenv("PASSWORD")
+
+bootcamp_url = os.getenv("BOOTCAMP_URL")
+bootcamp_user = os.getenv("BOOTCAMP_USER")
+bootcamp_pass = os.getenv("BOOTCAMP_PASS")
 
 # Add argument for setting directory to download content to
 my_parser = argparse.ArgumentParser(description='Download course contents from brightspace')
@@ -114,6 +120,12 @@ def log_in(user: str = user, password: str = password) -> None:
         sign_in.click()
 
 
+def create_base_folder(folder=save_folder):
+    # Make sure download folder exists and is set
+    pathlib.Path(folder).mkdir(parents=True, exist_ok=True)
+    os.chdir(folder)
+
+
 def get_docs_from_course(url: str, course_name: str) -> None:
     """
     Gets course documents from brightspace learning platform and saves them to a course unit folder within
@@ -121,9 +133,7 @@ def get_docs_from_course(url: str, course_name: str) -> None:
     :param url: Url of course content
     :param course_name: Name of course
     """
-    # Make sure firefox profile download folder exists and is set
-    pathlib.Path(save_folder).mkdir(parents=True, exist_ok=True)
-    os.chdir(save_folder)
+    create_base_folder()
 
     # Open and navigate to course content page
     driver.get(url)
@@ -170,13 +180,25 @@ def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensi
     :param sourcefolder: Folder to move files from
     :param extension: Extension of files to move
     """
+    files_to_folder = ["ipynb", "csv", "txt", "py"]  # Filetypes to extract to separate folders
     for file in pathlib.Path(sourcefolder).glob(extension):
         target_path = destination_folder
         new_path = file.rename(target_path.joinpath(file.name))
         logging.debug(f"Extracting {file} form {target_path} to {new_path}")
         print(f"Extracting {file} form {target_path} to {new_path}")
+
         zip_ref = zipfile.ZipFile(new_path)
-        zip_ref.extractall(target_path)
+        zip_names = zip_ref.namelist()
+        if len(zip_names) > 5:  # Don't extract zip files with too many items
+            continue
+        # Loop over files in zip to check for filetypes to extract to separate folders
+        for name in zip_names:
+            if name.split(".")[-1] in files_to_folder:
+                zip_ref.extractall(path=target_path / zip_ref.filename.split(".")[0])
+                #new_path.unlink()
+                break
+            else:
+                zip_ref.extractall(target_path)
         logging.debug(f"Successfully extracted {file} to {new_path}")
         zip_ref.close()
 
@@ -186,7 +208,62 @@ def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensi
             html_file.unlink()
 
 
+def request_download(url: str) -> None:
+    """
+    Downloads content from a url
+    :param url: Url to download from
+    :return: None
+    """
+    with requests.get(url) as r:
+        file_name = url.split("/")[-1]
+        r.raise_for_status()
+        with open(file_name, "wb") as f:
+            f.write(r.content)
+
+
+def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pass,
+                      bc_user_name: str = bootcamp_user) -> None:
+    """
+    Donwloads course content for Python Bootcamp by Yotta consulting
+    :param bc_url: Url of page to donwload content from
+    :param bc_password: user name for log in
+    :param bc_user_name: password for log in
+    :return: None
+    """
+    # Create base folder it if doesn't exist and navigate to it
+    create_base_folder(folder=save_folder / "python_bootcamp")
+    # Construct url from user name, password and boocamp url
+    url = f"https://{bc_user_name}:{bc_password}@{bc_url}"
+
+    # Request url and parse with BeautifulSoup
+    r = requests.get(url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    # Find links on page and extract url
+    list_items = soup.find_all("li", class_="list-group")
+    links = [item.find("a").get("href") for item in list_items if item.find("a") is not None]
+    # Loop over urls and extract those who are datasets or links to files on bootcamp page
+    to_download = {}
+    for link in links:
+        if "yotta" in link:  # Bootcamp files have yotta in link
+            to_download[link] = "yotta"
+        elif ".zip" in link:  # Datasets are stored as zip
+            to_download[link] = "dataset"
+
+    # Loop over all urls and save to python_bootcamp folder
+    for url, source in to_download.items():
+        # Check if url is bootcamp url to construct download url with user name and password
+        if source == "yotta":
+            url_no_method = url.split("//")[-1]
+            url = f"https://{bc_user_name}:{bc_password}@{url_no_method}"
+            request_download(url)
+        else:
+            request_download(url)
+    # Extract zip files in bootcamp folder
+    move_and_extract_files(save_folder/"python_bootcamp", sourcefolder=save_folder/"python_bootcamp")
+
+
 if __name__ == '__main__':
+    dl_bootcamp_files()
     courses = open_course_list()
     log_in()
 
@@ -201,3 +278,4 @@ if __name__ == '__main__':
         except Exception as e:
             logging.debug(e)
     driver.quit()  # Explicitly close driver when finished
+
