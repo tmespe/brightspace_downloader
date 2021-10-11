@@ -263,7 +263,6 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
 
 
 if __name__ == '__main__':
-    dl_bootcamp_files()
     courses = open_course_list()
     log_in()
 
@@ -278,4 +277,5 @@ if __name__ == '__main__':
         except Exception as e:
             logging.debug(e)
     driver.quit()  # Explicitly close driver when finished
+    dl_bootcamp_files()
 
