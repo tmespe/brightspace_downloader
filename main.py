@@ -151,7 +151,7 @@ def get_docs_from_course(url: str, course_name: str) -> None:
             try:
                 download_url = driver.find_element_by_class_name("download-content-button")
                 download_url.click()
-                sleep(60)
+                sleep(30)
             except NoSuchElementException as e:
                 if driver.find_element_by_tag_name("body").text:
                     save_html_page(save_folder.joinpath(unit_name + ".html"), driver.page_source)
@@ -187,10 +187,10 @@ def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensi
             zip_ref.close()
 
             # Remove unwanted zip and html files
-            new_path.unlink()
+            clean_up_files(new_path)
             for html_file in target_path.glob("*.html*"):
                 if "Table of Contents" in html_file.name:
-                    html_file.unlink()
+                    clean_up_files(extensions=[".html"])
 
 
 def save_html_page(file_name: str, html: str) -> None:
@@ -198,14 +198,21 @@ def save_html_page(file_name: str, html: str) -> None:
         f.write(html)
 
 
+def clean_up_files(folder=save_folder, extensions=[".zip"]):
+    files = {p.resolve() for p in pathlib.Path(folder).glob("*") if p.suffix in extensions}
+    for file in files:
+        file.unlink()
+
+
 if __name__ == '__main__':
     courses = open_course_list()
     log_in()
+    clean_up_files(save_folder)
 
-    for course in courses[1:3]:
+    for course in courses:
         course_code = course["code"]
         course_name = course["name"]
-        course_url = f"{BASE_URL}/{course_code}/home"
+        course_url = f"{BASE_URL}{course_code}/home"
         try:
             logging.debug(f"Attempting to get content from {course_name}")
             get_docs_from_course(course_url, course_name)
@@ -213,3 +220,4 @@ if __name__ == '__main__':
         except Exception as e:
             logging.debug(e)
     driver.quit()  # Explicitly close driver when finished
+    clean_up_files(save_folder)
