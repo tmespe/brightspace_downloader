@@ -1,14 +1,14 @@
 # Downloads course content from brightspace and saves to disk
 
+import argparse
 import json
 import logging
 import os
 import pathlib
-import zipfile
-import argparse
 import sys
 import requests
 
+import zipfile
 from time import sleep
 from typing import Union, Optional
 
@@ -158,22 +158,26 @@ def get_docs_from_course(url: str, course_name: str) -> None:
             pathlib.Path(unit.text).mkdir(parents=True, exist_ok=True)
             unit.click()
             driver.implicitly_wait(2)  # Wait to make sure unit is loaded before clicking download
+            logging.debug(f"Downloading {unit_name}")
             try:
                 download_url = driver.find_element_by_class_name("download-content-button")
                 download_url.click()
+                sleep(30)
             except NoSuchElementException as e:
-                logging.error(e)
-                continue
-            logging.debug(f"Downloading {unit_name}")
-            # logging.debug("%s downloaded", unit_name)
-            sleep(60)
-            logging.debug(f"Downloaded {unit_name}")
-            move_and_extract_files(pathlib.Path(unit_name))
+                if driver.find_element_by_tag_name("body").text:
+                    save_html_page(save_folder.joinpath(unit_name + ".html"), driver.page_source)
+                else:
+                    logging.error(e)
+                    continue
+            finally:
+                # logging.debug("%s downloaded", unit_name)
+                logging.debug(f"Downloaded {unit_name}")
+                move_and_extract_files(pathlib.Path(unit_name))
     else:
         pass
 
 
-def move_and_extract_files(destination_folder, sourcefolder=save_folder, extension="*.zip*") -> None:
+def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensions=[".zip", ".html"]) -> None:
     """
     Moves and extracts files with a given extension from source folder to destination folder
     :param destination_folder: Folder to move files to
@@ -181,10 +185,10 @@ def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensi
     :param extension: Extension of files to move
     """
     files_to_folder = ["ipynb", "csv", "txt", "py"]  # Filetypes to extract to separate folders
-    for file in pathlib.Path(sourcefolder).glob(extension):
+    for file in pathlib.Path(sourcefolder).glob(extensions):
         target_path = destination_folder
         new_path = file.rename(target_path.joinpath(file.name))
-        logging.debug(f"Extracting {file} form {target_path} to {new_path}")
+        if new_path.suffix == ".zip":logging.debug(f"Extracting {file} form {target_path} to {new_path}")
         print(f"Extracting {file} form {target_path} to {new_path}")
 
         zip_ref = zipfile.ZipFile(new_path)
@@ -202,10 +206,22 @@ def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensi
         logging.debug(f"Successfully extracted {file} to {new_path}")
         zip_ref.close()
 
-        # Remove unwanted zip and html files
-        new_path.unlink()
-        for html_file in target_path.glob("*.html*"):
-            html_file.unlink()
+            # Remove unwanted zip and html files
+            clean_up_files(new_path)
+            for html_file in target_path.glob("*.html*"):
+                if "Table of Contents" in html_file.name:
+                    clean_up_files(extensions=[".html"])
+
+
+def save_html_page(file_name: str, html: str) -> None:
+    with open(file_name, "w") as f:
+        f.write(html)
+
+
+def clean_up_files(folder=save_folder, extensions=[".zip"]):
+    files = {p.resolve() for p in pathlib.Path(folder).glob("*") if p.suffix in extensions}
+    for file in files:
+        file.unlink()
 
 
 def request_download(url: str) -> None:
@@ -265,11 +281,12 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
 if __name__ == '__main__':
     courses = open_course_list()
     log_in()
+    clean_up_files(save_folder)
 
     for course in courses:
         course_code = course["code"]
         course_name = course["name"]
-        course_url = f"{BASE_URL}/{course_code}/home"
+        course_url = f"{BASE_URL}{course_code}/home"
         try:
             logging.debug(f"Attempting to get content from {course_name}")
             get_docs_from_course(course_url, course_name)
@@ -279,3 +296,4 @@ if __name__ == '__main__':
     driver.quit()  # Explicitly close driver when finished
     dl_bootcamp_files()
 
+    clean_up_files(save_folder)
