@@ -1,21 +1,20 @@
 # Downloads course content from brightspace and saves to disk
-
 import argparse
 import json
 import logging
 import os
 import pathlib
 import sys
-import requests
-
+import re
 import zipfile
 from time import sleep
-from typing import Union, Optional
+from typing import Union, Optional, Dict
 
+import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from selenium import webdriver
-from selenium.common.exceptions import NoAlertPresentException, NoSuchElementException
+from selenium.common.exceptions import NoAlertPresentException, NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver.firefox.options import Options
 
 # Set up logging
@@ -126,6 +125,21 @@ def create_base_folder(folder=save_folder):
     os.chdir(folder)
 
 
+def get_docs_from_non_xframe(course_name):
+    """
+    Gets course content from courses that do not use iframes
+    :return: None
+    """
+    ignore_content = ["Table of Contents"]  # Elements to not download by name
+    driver.implicitly_wait(2)
+    units = driver.find_elements_by_xpath("//html/body/div[3]/div/div[1]/div[2]/div[1]/div/ul[2]/li")
+    # Filter units to drop ignored
+    units_filtered = filter(lambda x: re.sub(r'[^A-Za-z ]+', '', x.text) not in ignore_content, units)
+
+    # Download all non_ignored units using dl_units passing xpath for units
+    dl_units(course_name, units_filtered, {'find_element_by_xpath': '//button[text()="Download"]'})
+
+
 def get_docs_from_course(url: str, course_name: str) -> None:
     """
     Gets course documents from brightspace learning platform and saves them to a course unit folder within
@@ -140,41 +154,66 @@ def get_docs_from_course(url: str, course_name: str) -> None:
     driver.implicitly_wait(5)
     # Page has iframe for contents. Select and switch to iframe
     frame_xpath = driver.find_elements_by_xpath('//iframe')
-    driver.switch_to.frame(frame_xpath[0])
-    driver.implicitly_wait(10)
+    try:
+        driver.switch_to.frame(frame_xpath[0])
+        driver.implicitly_wait(10)
+    except IndexError:
+        get_docs_from_non_xframe(course_name)
 
     # Content is divided into units. Get all units using class name
     all_units = driver.find_elements_by_class_name("unit")
     # Make sure units exist so only courses with content have folders created
     if all_units:
         # Create course folder and switch to it
-        pathlib.Path(course_name).mkdir(parents=True, exist_ok=True)
-        os.chdir(course_name)
-
-        # Loop over all units on the content iframe and click download button and save
-        for unit in all_units:
-            unit_name = unit.text.split("\n")[0]
-
-            pathlib.Path(unit.text).mkdir(parents=True, exist_ok=True)
-            unit.click()
-            driver.implicitly_wait(2)  # Wait to make sure unit is loaded before clicking download
-            logging.debug(f"Downloading {unit_name}")
-            try:
-                download_url = driver.find_element_by_class_name("download-content-button")
-                download_url.click()
-                sleep(30)
-            except NoSuchElementException as e:
-                if driver.find_element_by_tag_name("body").text:
-                    save_html_page(save_folder.joinpath(unit_name + ".html"), driver.page_source)
-                else:
-                    logging.error(e)
-                    continue
-            finally:
-                # logging.debug("%s downloaded", unit_name)
-                logging.debug(f"Downloaded {unit_name}")
-                move_and_extract_files(pathlib.Path(unit_name))
+        dl_units(course_name, all_units, {"find_element_by_class_name": "download-content-button"})
     else:
         pass
+
+
+def dl_units(course_name: str, units: Union[object], dl_element: Dict[str, str]):
+    """
+    Downloads units from a brightspace content page
+    :param course_name: Name of course
+    :param units: An interable of units from course content to download
+    :param dl_element: Dict with selenium find_by method and element to find:
+            Ex {""find_element_by_class_name": "download-content-button""}
+    :return: None
+    """
+    pathlib.Path(course_name).mkdir(parents=True, exist_ok=True)
+    os.chdir(course_name)
+
+    # Loop over all units on the content iframe and click download button and save
+    for unit in units:
+        # unit_name = unit.text.split("\n")[0]
+        unit_name = unit.text.split("\n")[0]
+        target_path = pathlib.Path(course_name) / pathlib.Path(unit_name)
+
+        pathlib.Path(unit_name).mkdir(parents=True, exist_ok=True)
+        unit.click()
+        driver.implicitly_wait(2)  # Wait to make sure unit is loaded before clicking download
+        logging.debug(f"Downloading {unit_name}")
+        element_method = list(dl_element.keys())[0]
+        element_name = list(dl_element.values())[0]
+        try:
+            download_btn = getattr(driver, element_method)(element_name)
+            sleep(3)
+            download_btn.click()
+            sleep(30)
+        except StaleElementReferenceException as e:
+            download_btn = getattr(driver, element_method)(element_name)
+            download_btn.click()
+            sleep(30)
+        except NoSuchElementException as e:
+            if driver.find_element_by_tag_name("body").text:
+                save_html_page(save_folder.joinpath(unit_name + ".html"), driver.page_source)
+            else:
+                logging.error(e)
+                continue
+        finally:
+            # logging.debug("%s downloaded", unit_name)
+            logging.debug(f"Finished processing {unit_name}")
+            move_and_extract_files(target_path)
+            clean_up_files(target_path)
 
 
 def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensions=[".zip", ".html"]) -> None:
@@ -185,40 +224,55 @@ def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensi
     :param extension: Extension of files to move
     """
     files_to_folder = ["ipynb", "csv", "txt", "py"]  # Filetypes to extract to separate folders
-    for file in pathlib.Path(sourcefolder).glob(extensions):
-        target_path = destination_folder
-        new_path = file.rename(target_path.joinpath(file.name))
-        if new_path.suffix == ".zip":logging.debug(f"Extracting {file} form {target_path} to {new_path}")
-        print(f"Extracting {file} form {target_path} to {new_path}")
+    files = {p.resolve() for p in pathlib.Path(sourcefolder).glob("*") if p.suffix in extensions}
+    for file in files:
+        target_path = file.parent / destination_folder
+        new_path = file.rename(target_path / file.name)
+        if new_path.suffix == ".zip":
+            logging.debug(f"Extracting {file} form {target_path} to {new_path}")
+            print(f"Extracting {file} form {target_path} to {new_path}")
 
-        zip_ref = zipfile.ZipFile(new_path)
-        zip_names = zip_ref.namelist()
-        if len(zip_names) > 5:  # Don't extract zip files with too many items
-            continue
-        # Loop over files in zip to check for filetypes to extract to separate folders
-        for name in zip_names:
-            if name.split(".")[-1] in files_to_folder:
-                zip_ref.extractall(path=target_path / zip_ref.filename.split(".")[0])
-                #new_path.unlink()
-                break
-            else:
-                zip_ref.extractall(target_path)
-        logging.debug(f"Successfully extracted {file} to {new_path}")
-        zip_ref.close()
+            zip_ref = zipfile.ZipFile(new_path)
+            zip_names = zip_ref.namelist()
+            if len(zip_names) > 15:  # Don't extract zip files with too many items
+                continue
+            # Loop over files in zip to check for filetypes to extract to separate folders
+            for name in zip_names:
+                if name.split(".")[-1] in files_to_folder:
+                    zip_ref.extractall(path=target_path / zip_ref.filename.split(".")[0])
+                    # new_path.unlink()
+                    break
+                else:
+                    zip_ref.extractall(target_path)
+            logging.debug(f"Successfully extracted {file} to {new_path}")
+            zip_ref.close()
+            new_path.unlink()
 
-            # Remove unwanted zip and html files
-            clean_up_files(new_path)
-            for html_file in target_path.glob("*.html*"):
-                if "Table of Contents" in html_file.name:
-                    clean_up_files(extensions=[".html"])
+        # Remove unwanted zip and html files
+        # clean_up_files(target_path)
+        for html_file in target_path.glob("*.html*"):
+            if "Table of Contents" in html_file.name:
+                clean_up_files(target_path, extensions=[".html"])
 
 
 def save_html_page(file_name: str, html: str) -> None:
+    """
+    Saves a html page to given file name from HTML source
+    :param file_name: File name to save
+    :param html: HTML code
+    :return: None
+    """
     with open(file_name, "w") as f:
         f.write(html)
 
 
-def clean_up_files(folder=save_folder, extensions=[".zip"]):
+def clean_up_files(folder=save_folder, extensions=[".zip"]) -> None:
+    """
+    Removes files with given provided extensions in provided folder
+    :param folder: Folder to clean up files in
+    :param extensions: Extensions to look for
+    :return:
+    """
     files = {p.resolve() for p in pathlib.Path(folder).glob("*") if p.suffix in extensions}
     for file in files:
         file.unlink()
@@ -248,8 +302,10 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
     """
     # Create base folder it if doesn't exist and navigate to it
     create_base_folder(folder=save_folder / "python_bootcamp")
+    target_path = save_folder / "python_bootcamp"
+
     # Construct url from user name, password and boocamp url
-    url = f"https://{bc_user_name}:{bc_password}@{bc_url}"
+    url = f"https://{bc_user_name}:{bc_password}@{bc_url.replace('https://', '')}"
 
     # Request url and parse with BeautifulSoup
     r = requests.get(url)
@@ -262,7 +318,7 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
     for link in links:
         if "yotta" in link:  # Bootcamp files have yotta in link
             to_download[link] = "yotta"
-        elif ".zip" in link:  # Datasets are stored as zip
+        elif ".zip" in link:  # Datasets are stored as zip and on external links
             to_download[link] = "dataset"
 
     # Loop over all urls and save to python_bootcamp folder
@@ -275,7 +331,7 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
         else:
             request_download(url)
     # Extract zip files in bootcamp folder
-    move_and_extract_files(save_folder/"python_bootcamp", sourcefolder=save_folder/"python_bootcamp")
+    move_and_extract_files(target_path, sourcefolder=target_path)
 
 
 if __name__ == '__main__':
@@ -293,7 +349,7 @@ if __name__ == '__main__':
             logging.debug(f"Finished getting content from {course_name}")
         except Exception as e:
             logging.debug(e)
+            # raise e
     driver.quit()  # Explicitly close driver when finished
     dl_bootcamp_files()
-
     clean_up_files(save_folder)
