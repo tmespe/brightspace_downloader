@@ -44,7 +44,9 @@ my_parser.add_argument("-d",
                        help="name of text arg_file to search")
 
 args = my_parser.parse_args()
-save_folder = pathlib.Path(args.directory) or save_folder  # Use save folder from argument if set, else save to default
+if args.directory:
+    save_folder = pathlib.Path(args.directory)
+#save_folder =  or save_folder  # Use save folder from argument if set, else save to default
 logging.info(f"Saving files to {save_folder}")
 
 # Set download preferences for Firefox to make it download automatically with no dialogue
