@@ -44,7 +44,7 @@ my_parser.add_argument("-d",
                        help="name of text arg_file to search")
 
 args = my_parser.parse_args()
-save_folder = args.directory or save_folder  # Use save folder from argument if set, else save to default
+save_folder = pathlib.Path(args.directory) or save_folder  # Use save folder from argument if set, else save to default
 logging.info(f"Saving files to {save_folder}")
 
 # Set download preferences for Firefox to make it download automatically with no dialogue
@@ -336,6 +336,8 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
 
 if __name__ == '__main__':
     courses = open_course_list()
+    dl_bootcamp_files()
+
     log_in()
     clean_up_files(save_folder)
 
@@ -351,5 +353,4 @@ if __name__ == '__main__':
             logging.debug(e)
             # raise e
     driver.quit()  # Explicitly close driver when finished
-    dl_bootcamp_files()
     clean_up_files(save_folder)
