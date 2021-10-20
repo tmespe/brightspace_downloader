@@ -213,19 +213,22 @@ def dl_units(course_name: str, units: Union[object], dl_element: Dict[str, str])
         finally:
             # logging.debug("%s downloaded", unit_name)
             logging.debug(f"Finished processing {unit_name}")
-            move_and_extract_files(target_path)
+            move_and_extract_files(target_path, file_names=[course_name])
             clean_up_files(target_path)
 
 
-def move_and_extract_files(destination_folder, sourcefolder=save_folder, extensions=[".zip", ".html"]) -> None:
+def move_and_extract_files(destination_folder, source_folder=save_folder, file_names: Union[str] = None,
+                           extensions=[".zip", ".html"]) -> None:
     """
     Moves and extracts files with a given extension from source folder to destination folder
+    :param file_names: An optional list of file names to limit extraction to
     :param destination_folder: Folder to move files to
-    :param sourcefolder: Folder to move files from
-    :param extension: Extension of files to move
+    :param source_folder: Folder to move files from
+    :param extensions: Extension of files to move
     """
     files_to_folder = ["ipynb", "csv", "txt", "py"]  # Filetypes to extract to separate folders
-    files = {p.resolve() for p in pathlib.Path(sourcefolder).glob("*") if p.suffix in extensions}
+    files = {p.resolve() for p in pathlib.Path(source_folder).glob("*") if
+             p.suffix in extensions and p.name in file_names}
     for file in files:
         target_path = file.parent / destination_folder
         new_path = file.rename(target_path / file.name)
@@ -332,7 +335,7 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
         else:
             request_download(url)
     # Extract zip files in bootcamp folder
-    move_and_extract_files(target_path, sourcefolder=target_path)
+    move_and_extract_files(target_path, source_folder=target_path)
 
 
 if __name__ == '__main__':
@@ -343,6 +346,7 @@ if __name__ == '__main__':
     clean_up_files(save_folder)
 
     for course in courses:
+        clean_up_files()
         course_code = course["code"]
         course_name = course["name"]
         course_url = f"{BASE_URL}{course_code}/home"
