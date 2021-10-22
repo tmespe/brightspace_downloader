@@ -38,7 +38,7 @@
     },
     {
       "name": "FLE",
-      "code": "210384"
+      "code": "210383"
     },
     {
       "name": "Crm data platforms & marketing auto",
@@ -87,6 +87,10 @@
     {
       "name": "SQL",
       "code": "210414"
+    },
+    {
+      "name": "Desigining with web",
+      "code": "210394"
     }
   ]
 }
