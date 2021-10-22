@@ -199,11 +199,11 @@ def dl_units(course_name: str, units: Union[object], dl_element: Dict[str, str])
             download_btn = getattr(driver, element_method)(element_name)
             sleep(3)
             download_btn.click()
-            sleep(30)
+            sleep(45)
         except StaleElementReferenceException as e:
             download_btn = getattr(driver, element_method)(element_name)
             download_btn.click()
-            sleep(30)
+            sleep(45)
         except NoSuchElementException as e:
             if driver.find_element_by_tag_name("body").text:
                 save_html_page(save_folder.joinpath(unit_name + ".html"), driver.page_source)
@@ -213,23 +213,30 @@ def dl_units(course_name: str, units: Union[object], dl_element: Dict[str, str])
         finally:
             # logging.debug("%s downloaded", unit_name)
             logging.debug(f"Finished processing {unit_name}")
-            move_and_extract_files(target_path, file_names=[course_name])
+            move_and_extract_files(target_path, zip_file_names=[course_name])
             clean_up_files(target_path)
 
 
-def move_and_extract_files(destination_folder, source_folder=save_folder, file_names: Union[str] = None,
-                           extensions=[".zip", ".html"]) -> None:
+def move_and_extract_files(destination_folder, source_folder=save_folder, zip_file_names=[],
+                           extensions=[".zip", ".html", ".part"]) -> None:
     """
     Moves and extracts files with a given extension from source folder to destination folder
-    :param file_names: An optional list of file names to limit extraction to
+    :param zip_file_names: An optional list of file names to limit extraction to
     :param destination_folder: Folder to move files to
     :param source_folder: Folder to move files from
     :param extensions: Extension of files to move
     """
     files_to_folder = ["ipynb", "csv", "txt", "py"]  # Filetypes to extract to separate folders
+    # Create set of files to loop over if suffix corresponds to extensions param
     files = {p.resolve() for p in pathlib.Path(source_folder).glob("*") if
-             p.suffix in extensions and p.name in file_names}
-    for file in files:
+             p.suffix in extensions}
+
+    # Check if file.name is in zip_file_names to extract to avoid extracting leftover files to wrong folder
+    if zip_file_names is not None:
+        filtered_files = [file for file in files for name in zip_file_names if name in file.name]
+
+    # Loop over either filtered files if param set or over files and extract to target folder
+    for file in filtered_files or files:
         target_path = file.parent / destination_folder
         new_path = file.rename(target_path / file.name)
         if new_path.suffix == ".zip":
