@@ -312,8 +312,8 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
     :return: None
     """
     # Create base folder it if doesn't exist and navigate to it
-    create_base_folder(folder=save_folder / "python_bootcamp")
-    target_path = save_folder / "python_bootcamp"
+    create_base_folder(folder=save_folder / "Python coding bootcamp")
+    target_path = save_folder / "Python coding bootcamp"
 
     # Construct url from user name, password and boocamp url
     url = f"https://{bc_user_name}:{bc_password}@{bc_url.replace('https://', '')}"
