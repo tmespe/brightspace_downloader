@@ -18,7 +18,7 @@
     },
     {
       "name": "Strategizing : digital business models",
-      "code": "210410"
+      "code": "210411"
     },
     {
       "name": "Web analytics",
@@ -79,6 +79,9 @@
     {
       "name": "Python coding bootcamp",
       "code": "210401"
+    }, {
+      "name": "Coding with r & shiny",
+      "code": "210370"
     },
     {
       "name": "Advanced excel",
