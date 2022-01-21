@@ -1,5 +1,6 @@
 # Downloads course content from brightspace and saves to disk
 import argparse
+import datetime
 import json
 import logging
 import os
@@ -8,7 +9,7 @@ import sys
 import re
 import zipfile
 from time import sleep
-from typing import Union, Optional, Dict
+from typing import Union, Optional, Dict, List
 
 import requests
 from bs4 import BeautifulSoup
@@ -303,27 +304,48 @@ def request_download(url: str) -> None:
 
 
 def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pass,
-                      bc_user_name: str = bootcamp_user) -> None:
+                      bc_user_name: str = bootcamp_user, tabs: List = ["nav-datasets", "nav-courses", "nav-assignments"]) -> None:
     """
     Donwloads course content for Python Bootcamp by Yotta consulting
     :param bc_url: Url of page to donwload content from
     :param bc_password: user name for log in
     :param bc_user_name: password for log in
+    :param tabs: tabs to get links from and download content
     :return: None
     """
-    # Create base folder it if doesn't exist and navigate to it
-    create_base_folder(folder=save_folder / "Python coding bootcamp")
-    target_path = save_folder / "Python coding bootcamp"
+    # Check date to see whether to download bootcamp or text mining files
+    TODAY = datetime.datetime.now()
+    
+    # Check if month is larger than September as page changes to Bootcamp in September and create corresponding folder
+    if TODAY.month > 8:
+        create_base_folder(folder=save_folder / "Python coding bootcamp")
+        target_path = save_folder / "Python coding bootcamp"
+        tabs[1] = "nav-bootcamp"
+    else:
+        create_base_folder(folder=save_folder / "Data science & text mining")
+        target_path = save_folder / "Data science & text mining"
 
+   
     # Construct url from user name, password and boocamp url
     url = f"https://{bc_user_name}:{bc_password}@{bc_url.replace('https://', '')}"
-
+    
     # Request url and parse with BeautifulSoup
     r = requests.get(url)
     soup = BeautifulSoup(r.text, "html.parser")
     # Find links on page and extract url
     list_items = soup.find_all("li", class_="list-group")
-    links = [item.find("a").get("href") for item in list_items if item.find("a") is not None]
+    items_in_tabs = []
+    for li in list_items:
+        parent_id = li.find_parent().find_parent().get("id")
+        if  parent_id in tabs:
+            items_in_tabs.append(li)
+        else:
+            continue
+    #parents = [item.find_parent().find_parent().get("id") in "nav-datasets-tab" for item in list_items]
+    #list_items = soup.find_all(True, {"id": ["nav-courses-tab", "nav-datasets-tab", "nav-assignments-tab"]})
+    #items_children = [item.find_all("li", class_="list-group") for item in list_items]
+    links = [item.find("a").get("href") for item in items_in_tabs if item.find("a") is not None]
+    
     # Loop over urls and extract those who are datasets or links to files on bootcamp page
     to_download = {}
     for link in links:
