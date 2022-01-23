@@ -104,17 +104,17 @@ def log_in(user: str = user, password: str = password) -> None:
     if not user or not password:
         sys.exit("No username or password provided. Did you create a .env file with USER_NAME and PASSWORD?")
 
-    # Select html xpath for username, password and sign in button
-    user_xpath = '//*[@id="userNameInput"]'
-    password_xpath = '//*[@id="passwordInput"]'
-    sign_in_button = '//*[@id="submitButton"]'
-
     driver.get(LOGIN_URL)
     # Handle cases where on local emlyon network and an alert login pop up displays
     if not check_if_alert():
+        # Select html xpath for username, password and sign in button
+        user_xpath = '//*[@id="userNameInput"]'
         # Find username, pasword and sign in elements and send keys for log in
         user_element = driver.find_element_by_xpath(user_xpath)
+        password_xpath = '//*[@id="passwordInput"]'
         password_element = driver.find_element_by_xpath(password_xpath)
+        sign_in_button = '//*[@id="submitButton"]'
+
         sign_in = driver.find_element_by_xpath(sign_in_button)
         user_element.send_keys(user)
         password_element.send_keys(password)
@@ -168,8 +168,6 @@ def get_docs_from_course(url: str, course_name: str) -> None:
     if all_units:
         # Create course folder and switch to it
         dl_units(course_name, all_units, {"find_element_by_class_name": "download-content-button"})
-    else:
-        pass
 
 
 def dl_units(course_name: str, units: Union[object], dl_element: Dict[str, str]):
@@ -314,7 +312,7 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
     """
     # Check date to see whether to download bootcamp or text mining files
     TODAY = datetime.datetime.now()
-    
+
     # Check if month is larger than September as page changes to Bootcamp in September and create corresponding folder
     if TODAY.month > 8:
         create_base_folder(folder=save_folder / "Python coding bootcamp")
@@ -324,10 +322,10 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
         create_base_folder(folder=save_folder / "Data science & text mining")
         target_path = save_folder / "Data science & text mining"
 
-   
+
     # Construct url from user name, password and boocamp url
     url = f"https://{bc_user_name}:{bc_password}@{bc_url.replace('https://', '')}"
-    
+
     # Request url and parse with BeautifulSoup
     r = requests.get(url)
     soup = BeautifulSoup(r.text, "html.parser")
@@ -336,7 +334,7 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
     items_in_tabs = []
     for li in list_items:
         parent_ids = [parent for parent in li.find_parents() if parent.get("id") in tabs]
-        if  len(parent_ids) > 0:
+        if parent_ids:
             items_in_tabs.append(li)
         else:
             continue
@@ -344,7 +342,7 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
     #list_items = soup.find_all(True, {"id": ["nav-courses-tab", "nav-datasets-tab", "nav-assignments-tab"]})
     #items_children = [item.find_all("li", class_="list-group") for item in list_items]
     links = [item.find("a").get("href") for item in items_in_tabs if item.find("a") is not None]
-    
+
     # Loop over urls and extract those who are datasets or links to files on bootcamp page
     to_download = {}
     for link in links:
@@ -359,9 +357,7 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
         if source == "yotta":
             url_no_method = url.split("//")[-1]
             url = f"https://{bc_user_name}:{bc_password}@{url_no_method}"
-            request_download(url)
-        else:
-            request_download(url)
+        request_download(url)
     # Extract zip files in bootcamp folder
     move_and_extract_files(target_path, source_folder=target_path)
 
