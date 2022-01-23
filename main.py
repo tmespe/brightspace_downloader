@@ -239,7 +239,7 @@ def move_and_extract_files(destination_folder, source_folder=save_folder, zip_fi
     # Loop over either filtered files if param set or over files and extract to target folder
     for file in filtered_files or files:
         target_path = file.parent / destination_folder
-        new_path = file.rename(target_path / file.name)
+        new_path = file.rename(target_path / re.sub(r'\d{1,2}(\d{1,2})?\s(am|pm)?', "", file.name, flags=re.IGNORECASE))
         if new_path.suffix == ".zip":
             logging.debug(f"Extracting {file} form {target_path} to {new_path}")
             print(f"Extracting {file} form {target_path} to {new_path}")
@@ -265,7 +265,6 @@ def move_and_extract_files(destination_folder, source_folder=save_folder, zip_fi
         for html_file in target_path.glob("*.html*"):
             if "Table of Contents" in html_file.name:
                 clean_up_files(target_path, extensions=[".html"])
-
 
 def save_html_page(file_name: str, html: str) -> None:
     """
@@ -336,8 +335,8 @@ def dl_bootcamp_files(bc_url: str = bootcamp_url, bc_password: str = bootcamp_pa
     list_items = soup.find_all("li", class_="list-group")
     items_in_tabs = []
     for li in list_items:
-        parent_id = li.find_parent().find_parent().get("id")
-        if  parent_id in tabs:
+        parent_ids = [parent for parent in li.find_parents() if parent.get("id") in tabs]
+        if  len(parent_ids) > 0:
             items_in_tabs.append(li)
         else:
             continue
